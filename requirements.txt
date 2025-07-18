@@ -1,0 +1,12 @@
+openai
+streamlit
+pandas
+numpy
+tqdm
+pdfplumber
+PyPDF2
+pytesseract
+PyMuPDF
+Pillow
+python-dotenv
+requests
