@@ -1,2 +1,4 @@
-docx
+streamlit
 openai
+pandas
+python-docx
