@@ -2,6 +2,7 @@ import streamlit as st
 #import pandas as pd
 #import numpy as np
 import openai
+from openai import OpenAI
 
 from utils import extract_text_from_docx
 
@@ -46,6 +47,7 @@ if CV_uploaded_file is not None and CV_narrative_file is not None:
             "Chat with it as if you are a recruiter here:")
 
     openai.api_key = st.secrets["OPENAI_API_KEY"]
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
     BACKGROUND_CONTEXT = f"""
     You are an AI representative for someone seeking a job.
@@ -92,10 +94,18 @@ if CV_uploaded_file is not None and CV_narrative_file is not None:
         # Call OpenAI
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",  # or "gpt-3.5-turbo"
+                # response = openai.ChatCompletion.create(
+                #     model="gpt-4",  # or "gpt-3.5-turbo"
+                #     messages=st.session_state.messages
+                # )
+                # reply = response.choices[0].message.content
+                # st.markdown(reply)
+
+                response = client.chat.completions.create(
+                    model="gpt-4",
                     messages=st.session_state.messages
                 )
+
                 reply = response.choices[0].message.content
                 st.markdown(reply)
 
