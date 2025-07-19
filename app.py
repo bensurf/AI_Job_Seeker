@@ -12,6 +12,8 @@ st.title('AI Job Seeker')
 st.text('Create an AI representative for your job search process by uploading your CV and a narrative that goes into more detail about yourself.\n\n' \
 'Once you are done, you can chat with it.')
 
+st.markdown("---")
+
 CV_uploaded_file = st.file_uploader("Upload your CV (.docx only)", type=["docx"])
 
 if CV_uploaded_file is not None:
