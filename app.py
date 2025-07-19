@@ -9,7 +9,7 @@ from utils import extract_text_from_docx
 
 st.title('AI Job Seeker')
 
-st.text('Create an AI representative for your job search process by uploading your CV and a narrative going into more detail about yourself.\n' \
+st.text('Create an AI representative for your job search process by uploading your CV and a narrative that goes into more detail about yourself.\n\n' \
 'Once you are done, you can chat with it.')
 
 CV_uploaded_file = st.file_uploader("Upload your CV (.docx only)", type=["docx"])
