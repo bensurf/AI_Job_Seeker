@@ -20,13 +20,59 @@ class AudioProcessor:
 def start_chatbot(CV_contents,CV_narrative_contents):
     st.text("Your AI representative has been created!\n" \
     "Chat with it as if you are a recruiter here:")
-    
-    input_mode = st.radio("Choose chat mode:", ["Text", "Voice"], horizontal=True)
-
-    
 
     openai.api_key = st.secrets["OPENAI_API_KEY"]
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    
+    input_mode = st.radio("Choose chat mode:", ["Text", "Voice"], horizontal=True)
+
+    prompt = None
+
+    if input_mode == 'Voice':
+        # Start the WebRTC audio capture
+
+        ctx = webrtc_streamer(
+            key="mic",
+            mode=WebRtcMode.SENDONLY,
+            audio_receiver_size=256,
+            video_processor_factory=None,  # No video
+            media_stream_constraints={
+                "video": False,
+                "audio": True
+            }
+        )
+
+        # Button appears once WebRTC is running
+        if ctx.state.playing:
+            st.info("Connection ready. Click the button when you're done speaking.")
+
+            if st.button("🎧 Transcribe Audio"):
+                audio_frames = ctx.audio_receiver.get_frames(timeout=3)  # 3 second wait
+
+                if not audio_frames:
+                    st.warning("No audio received. Try again.")
+                else:
+                    # Combine audio and save as .wav
+                    audio_data = b"".join([f.to_ndarray().tobytes() for f in audio_frames])
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                        with wave.open(f.name, "wb") as wf:
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)  # 16-bit audio
+                            wf.setframerate(48000)
+                            wf.writeframes(audio_data)
+                        audio_path = f.name
+
+                    # Transcribe with Whisper
+                    with open(audio_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file
+                        )
+                       # st.success("Transcription complete:")
+                       # st.write(transcript.text)
+
+                        prompt = transcript.text
+    
 
     BACKGROUND_CONTEXT = f"""
     You are an AI representative for someone seeking a job.
@@ -66,55 +112,10 @@ def start_chatbot(CV_contents,CV_narrative_contents):
     # Collect input from user
     if input_mode == 'Text':
         prompt = st.chat_input("Thank you for reaching out about my job application. What would you like to know about me?")
-        if prompt is not None:
-            collect_next_user_input(client, prompt)
-    elif input_mode == 'Voice':
-        # Start the WebRTC audio capture
 
-        ctx = webrtc_streamer(
-            key="mic",
-            mode=WebRtcMode.SENDONLY,
-            audio_receiver_size=256,
-            video_processor_factory=None,  # No video
-            media_stream_constraints={
-                "video": False,
-                "audio": True
-            }
-        )
+    if prompt is not None:
+        collect_next_user_input(client, prompt)
 
-        # Button appears once WebRTC is running
-        if ctx.state.playing:
-            st.info("Connection ready. Click the button when you're done speaking.")
-
-            if st.button("🎧 Transcribe Audio"):
-                ctx.state.playing = False
-                
-                audio_frames = ctx.audio_receiver.get_frames(timeout=3)  # 3 second wait
-
-                if not audio_frames:
-                    st.warning("No audio received. Try again.")
-                else:
-                    # Combine audio and save as .wav
-                    audio_data = b"".join([f.to_ndarray().tobytes() for f in audio_frames])
-                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                        with wave.open(f.name, "wb") as wf:
-                            wf.setnchannels(1)
-                            wf.setsampwidth(2)  # 16-bit audio
-                            wf.setframerate(48000)
-                            wf.writeframes(audio_data)
-                        audio_path = f.name
-
-                    # Transcribe with Whisper
-                    with open(audio_path, "rb") as audio_file:
-                        transcript = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file
-                        )
-                       # st.success("Transcription complete:")
-                       # st.write(transcript.text)
-
-                        prompt = transcript.text
-                        collect_next_user_input(client, prompt)
 
 
 
