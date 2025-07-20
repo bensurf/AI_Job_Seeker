@@ -2,6 +2,20 @@ import streamlit as st
 from openai import OpenAI
 import openai
 import tempfile
+from streamlit_webrtc import webrtc_streamer, WebRtcMode#, ClientSettings
+import av
+import wave
+import numpy as np
+
+# Audio Processor Class
+class AudioProcessor:
+    def __init__(self):
+        self.frames = []
+
+    def recv(self, frame: av.AudioFrame):
+        audio_data = frame.to_ndarray().flatten()
+        self.frames.append(audio_data)
+        return frame
 
 def start_chatbot(CV_contents,CV_narrative_contents):
     st.text("Your AI representative has been created!\n" \
@@ -52,38 +66,81 @@ def start_chatbot(CV_contents,CV_narrative_contents):
     # Collect input from user
     if input_mode == 'Text':
         prompt = st.chat_input("Thank you for reaching out about my job application. What would you like to know about me?")
+        if prompt is not None:
+            collect_next_user_input(client, prompt)
     elif input_mode == 'Voice':
-        audio_file = st.file_uploader("Upload your voice message", type=["wav", "mp3", "m4a"])
-        if audio_file is not None:
-            # Transcribe using Whisper
-            transcript = openai.Audio.transcribe("whisper-1", audio_file)
-            prompt = transcript["text"]
-    else:
-        prompt = "EYYYY"
+        # Start the WebRTC audio capture
 
-    if prompt:
-        # Display user message
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        ctx = webrtc_streamer(
+            key="mic",
+            mode=WebRtcMode.SENDONLY,
+            audio_receiver_size=256,
+            video_processor_factory=None,  # No video
+            media_stream_constraints={
+                "video": False,
+                "audio": True
+            }
+        )
 
-        # Call OpenAI
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                # response = openai.ChatCompletion.create(
-                #     model="gpt-4",  # or "gpt-3.5-turbo"
-                #     messages=st.session_state.messages
-                # )
-                # reply = response.choices[0].message.content
-                # st.markdown(reply)
+        # Button appears once WebRTC is running
+        if ctx.state.playing:
+            st.info("Connection ready. Click the button when you're done speaking.")
 
-                response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=st.session_state.messages
-                )
+            if st.button("🎧 Transcribe Audio"):
+                ctx.state.playing = False
+                
+                audio_frames = ctx.audio_receiver.get_frames(timeout=3)  # 3 second wait
 
-                reply = response.choices[0].message.content
-                st.markdown(reply)
+                if not audio_frames:
+                    st.warning("No audio received. Try again.")
+                else:
+                    # Combine audio and save as .wav
+                    audio_data = b"".join([f.to_ndarray().tobytes() for f in audio_frames])
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                        with wave.open(f.name, "wb") as wf:
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)  # 16-bit audio
+                            wf.setframerate(48000)
+                            wf.writeframes(audio_data)
+                        audio_path = f.name
 
-        # Save assistant reply
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+                    # Transcribe with Whisper
+                    with open(audio_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file
+                        )
+                       # st.success("Transcription complete:")
+                       # st.write(transcript.text)
+
+                        prompt = transcript.text
+                        collect_next_user_input(client, prompt)
+
+
+
+def collect_next_user_input(client, prompt):
+    # Display user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Call OpenAI
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            # response = openai.ChatCompletion.create(
+            #     model="gpt-4",  # or "gpt-3.5-turbo"
+            #     messages=st.session_state.messages
+            # )
+            # reply = response.choices[0].message.content
+            # st.markdown(reply)
+
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=st.session_state.messages
+            )
+
+            reply = response.choices[0].message.content
+            st.markdown(reply)
+
+    # Save assistant reply
+    st.session_state.messages.append({"role": "assistant", "content": reply})
