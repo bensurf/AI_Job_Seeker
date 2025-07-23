@@ -2,3 +2,7 @@ streamlit
 openai
 pandas
 python-docx
+streamlit_webrtc
+av
+numpy
+wave
