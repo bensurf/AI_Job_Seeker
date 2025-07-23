@@ -2,7 +2,7 @@ streamlit
 openai
 pandas
 python-docx
-streamlit_webrtc
+streamlit-webrtc
 av
 numpy
 wave
