@@ -50,13 +50,13 @@ system_prompt = st.text_area("System prompt: These are the instructions for the 
                              height=500,
                              disabled=st.session_state["chat_started"])
 
+st.markdown("---")
+
 def start():
     st.session_state['chat_started'] = True
 
 if CV_uploaded_file is not None and CV_narrative_file is not None:
-    st.button('Start', on_click=start, disabled=st.session_state["chat_started"])
-
-st.markdown("---")
+    st.button('Start the conversation', on_click=start, disabled=st.session_state["chat_started"])
 
 
 if st.session_state["chat_started"]:
