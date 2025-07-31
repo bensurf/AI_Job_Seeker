@@ -113,7 +113,7 @@ if st.session_state["chat_started"]:
                 # st.markdown(reply)
 
                 response = client.chat.completions.create(
-                    model="gpt-4",
+                    model="gpt-4o-2024-08-06",
                     messages=st.session_state.messages
                 )
 
